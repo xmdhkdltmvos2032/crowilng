@@ -1,20 +1,21 @@
-from fastapi import FastAPI
-from googlenewsdecoder import gnewsdecoder
+from fastapi import FastAPI, Query
+import subprocess
 
 app = FastAPI()
 
-@app.get("/decode")
-def decode(url: str, title: str):
+@app.get("/get_video")
+def get_video(url: str = Query(...)):
     try:
-        result = gnewsdecoder(url)
+        result = subprocess.run(
+            ["yt-dlp", "-g", url],
+            capture_output=True,
+            text=True
+        )
 
-        if not result.get("status"):
-            return {"error": "Decoding failed"}
+        if result.returncode != 0:
+            return {"error": result.stderr}
 
-        return {
-            "title": title,
-            "decoded_url": result["decoded_url"]
-        }
+        return {"direct_url": result.stdout.strip()}
 
     except Exception as e:
         return {"error": str(e)}
