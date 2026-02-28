@@ -1,30 +1,38 @@
+import os
 from fastapi import FastAPI, Query
 import subprocess
 
 app = FastAPI()
 
+# 🚀 서버 시작 시 쿠키 파일 생성
+cookies_content = os.getenv("INSTAGRAM_COOKIES")
+
+if cookies_content:
+    with open("cookies.txt", "w") as f:
+        f.write(cookies_content)
+
 @app.get("/get_video")
 def get_video(url: str = Query(...)):
     try:
-        result = subprocess.run(
-            [
-                "yt-dlp",
-                "-f", "best",
-                "--no-warnings",
-                "--no-playlist",
-                "-g",
-                url
-            ],
-            capture_output=True,
-            text=True
-        )
+        cmd = [
+            "yt-dlp",
+            "--cookies", "cookies.txt",
+            "--no-playlist",
+            "--quiet",
+            "-f", "best",
+            "-g",
+            url
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
-            return {"error": result.stderr}
+            return {"success": False, "error": result.stderr.strip()}
 
-        direct_url = result.stdout.strip().split("\n")[0]
-
-        return {"direct_url": direct_url}
+        return {
+            "success": True,
+            "direct_urls": result.stdout.strip().split("\n")
+        }
 
     except Exception as e:
-        return {"error": str(e)}
+        return {"success": False, "error": str(e)}
